@@ -1,0 +1,7 @@
+#!/bin/bash
+sync
+/bin/remove-old-kernels.sh
+/bin/autoupdate.sh
+sudo -u ${USER} /usr/bin/bleachbit -c --preset
+/usr/bin/bleachbit -c --preset
+shutdown -h now
