@@ -1,7 +1,8 @@
 #!/bin/bash
-sync
-/bin/remove-old-kernels.sh
-/bin/autoupdate.sh
+sync && \
+/bin/remove-old-kernels.sh && \
+/bin/remove-old-snaps.sh && \
+/bin/autoupdate.sh && \
 sudo -u ${USER} /usr/bin/bleachbit -c --preset
 /usr/bin/bleachbit -c --preset
 shutdown -h now
