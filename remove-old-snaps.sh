@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
 # Removes old revisions of snaps
 # CLOSE ALL SNAPS BEFORE RUNNING THIS
 set -eu

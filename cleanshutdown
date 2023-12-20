@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 sync && \
 /bin/remove-old-kernels.sh && \
 /bin/remove-old-snaps.sh && \
