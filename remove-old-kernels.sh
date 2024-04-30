@@ -27,7 +27,7 @@ else
 fi
 
 # Loop autoremove until no more packages are removed
-while sudo apt-get autoremove -y | grep -q '0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded'; do
+while ! sudo apt-get autoremove -y | grep -q '0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded'; do
     echo "Running autoremove again to ensure all unnecessary packages are removed."
 done
 
