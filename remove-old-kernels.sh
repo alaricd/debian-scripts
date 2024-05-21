@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Improved remove-old-kernels.sh script with current kernel protection
 
 PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
 
-# Get the version and package of the currently running kernel
+# Get the version of the currently running kernel
 current_kernel_version=$(uname -r)
-current_kernel_package=$(dpkg -l | grep linux-image | awk '{print $2}' | grep "$current_kernel_version")
 
-# Get a list of installed kernels, excluding the current one
-installed_kernels=$(dpkg --list | grep linux-image | awk '{print $2}' | grep -v "$current_kernel_version" | sort -V)
+# Define meta-packages to exclude
+meta_packages="linux-image-generic linux-image-lowlatency linux-image-raspi linux-image-cloud"
 
-# Get the list of kernels that are older than the current kernel
+# Get a list of installed kernel images, excluding the current one and meta-packages
+installed_kernels=$(dpkg --list | grep linux-image | awk '{print $2}' | grep -vE "$current_kernel_version|$meta_packages" | sort -V)
+
+# Get the list of kernels to remove
 kernels_to_remove=()
 for kernel in $installed_kernels; do
-    if dpkg --compare-versions "$kernel" lt "$current_kernel_version" && [ "$kernel" != "$current_kernel_package" ]; then
+    kernel_version=$(echo $kernel | sed -n 's/linux-image-\([0-9.-]*\)-generic/\1/p')
+    if [ ! -z "$kernel_version" ] && dpkg --compare-versions "$kernel_version" lt "$current_kernel_version"; then
         kernels_to_remove+=("$kernel")
     fi
 done
@@ -25,4 +27,3 @@ if [ ${#kernels_to_remove[@]} -gt 0 ]; then
 else
     echo "No old kernels to remove."
 fi
-
