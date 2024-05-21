@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 sync && \
 /bin/remove-old-kernels.sh && \
+/bin/remove-all-old-packages.sh && \
 /bin/remove-old-snaps.sh && \
 /bin/autoupdate.sh && \
 sudo -u ${USER} /usr/bin/bleachbit -c --preset
