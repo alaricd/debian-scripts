@@ -9,6 +9,5 @@ if [ -f /var/run/reboot-required ]; then
 else
     # Restart affected services
     echo "Restarting affected services..."
-    /usr/bin/systemctl daemon-reexec
-    /usr/bin/systemctl restart $(systemctl list-units --type=service --state=running | grep '.service' | awk '{print $1}')
+    /usr/sbin/needrestart -r a
 fi
