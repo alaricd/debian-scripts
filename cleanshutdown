@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 sync && \
+/bin/check-if-already-running.sh && \
 /bin/remove-old-kernels.sh && \
 /bin/remove-all-old-packages.sh && \
 /bin/remove-old-snaps.sh && \
