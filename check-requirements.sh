@@ -16,7 +16,7 @@ elif [ "$ID" == "ubuntu" ]; then
     packages=("netcat-openbsd" "sed" "deborphan" "needrestart")
 elif [ "$ID" == "debian" ]; then
     # Debian-specific package list
-    packages=("netcat" "sed" "deborphan" "needrestart")
+    packages=("netcat-openbsd" "sed" "deborphan" "needrestart")
 else
     echo "Unsupported distribution: $ID"
     exit 1
