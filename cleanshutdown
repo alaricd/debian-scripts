@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
+set -e
+
+# Determine the directory containing this script so we can invoke
+# companion scripts from the same location regardless of where the
+# user installs them. This keeps the setup self-contained in the
+# user's account.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 sync && \
-/bin/check-if-already-running.sh && \
-/bin/remove-old-kernels.sh && \
-/bin/remove-all-old-packages.sh && \
-/bin/remove-old-snaps.sh && \
-/bin/autoupdate.sh && \
-sudo -u ${USER} /usr/bin/bleachbit -c --preset
-/usr/bin/bleachbit -c --preset
+"${SCRIPT_DIR}/check-if-already-updating.sh" && \
+"${SCRIPT_DIR}/remove-old-kernels.sh" && \
+"${SCRIPT_DIR}/remove-all-old-packages.sh" && \
+"${SCRIPT_DIR}/remove-old-snaps.sh" && \
+"${SCRIPT_DIR}/autoupdate.sh"
+
+# BleachBit runs occasionally fail; these should not block the
+# shutdown sequence, so we ignore their exit status.
+sudo -u "${USER}" /usr/bin/bleachbit -c --preset || true
+/usr/bin/bleachbit -c --preset || true
+
 shutdown -h now
