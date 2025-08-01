@@ -8,9 +8,21 @@ if ! grep -q "apt-mark minimize-manual" "$script"; then
   exit 1
 fi
 
-# positive: script loops over apt-get autoremove
+# positive: script loops up to 10 times using a for loop with seq
+if ! grep -q "for attempt in \$(seq 1 10)" "$script"; then
+  echo "Expected for loop with seq limit" >&2
+  exit 1
+fi
+
+# positive: script invokes apt-get autoremove
 if ! grep -q "apt-get autoremove" "$script"; then
   echo "Expected apt-get autoremove command" >&2
+  exit 1
+fi
+
+# negative: script should not use a while loop for autoremove
+if grep -q "while .*apt-get autoremove" "$script"; then
+  echo "Should not use while loop for autoremove" >&2
   exit 1
 fi
 

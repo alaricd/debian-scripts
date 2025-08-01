@@ -11,5 +11,5 @@ not attempt to use it.
 
 With `deborphan` removed, the recommended approach to clean unused packages is
 to rely on `apt autoremove` in combination with `apt-mark minimize-manual`.
-`remove-all-old-packages.sh` automates this process and purges `deborphan`
-itself if it is still installed.
+`remove-all-old-packages.sh` automates this process, looping `apt autoremove`
+up to ten times and purging `deborphan` itself if it is still installed.
