@@ -3,7 +3,15 @@
 
 PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
 
-# Loop autoremove until no more packages are removed
+# Mark packages that are no longer explicitly required as automatic
+apt-mark minimize-manual
+
+# Remove deborphan if it is present
+if dpkg -s deborphan >/dev/null 2>&1; then
+    apt-get purge -y deborphan
+fi
+
+# Loop autoremove until no packages remain
 while ! sudo apt-get autoremove -y | grep -q '0 upgraded, 0 newly installed, 0 to remove'; do
     echo "Running autoremove again to ensure all unnecessary packages are removed."
 done
