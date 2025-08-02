@@ -9,8 +9,16 @@ fi
 
 # Define package lists specific to each distribution
 if [ "$ID" == "kali" ]; then
-    # Kali-specific package list (netcat is already included by default)
-    packages=("nc" "sed" "deborphan" "needrestart")
+    # Kali-specific package list (netcat is provided by default)
+    packages=("sed" "deborphan" "needrestart")
+    if ! command -v nc >/dev/null 2>&1; then
+        echo "nc is not installed. Installing netcat-traditional..."
+        apt-get install -y netcat-traditional
+        if [ $? -ne 0 ]; then
+            echo "Error installing netcat-traditional. Exiting."
+            exit 1
+        fi
+    fi
 elif [ "$ID" == "ubuntu" ]; then
     # Ubuntu-specific package list
     packages=("netcat-openbsd" "sed" "deborphan" "needrestart")
@@ -40,5 +48,14 @@ for pkg in "${packages[@]}"; do
         echo "$pkg is already installed."
     fi
 done
+
+if command -v needrestart >/dev/null 2>&1; then
+    echo "Restarting services with stale binaries..."
+    needrestart -r a
+    if [ $? -ne 0 ]; then
+        echo "needrestart failed. Exiting."
+        exit 1
+    fi
+fi
 
 echo "All packages checked and necessary ones installed."
