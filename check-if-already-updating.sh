@@ -4,3 +4,6 @@ if pidof apt-get > /dev/null || pidof dpkg > /dev/null; then
     echo "An update process is already running. Exiting..."
     exit 1
 fi
+export DEBIAN_FRONTEND=noninteractive
+
+dpkg --configure -a --force-confdef --force-confold

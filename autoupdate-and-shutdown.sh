@@ -16,6 +16,7 @@ fi
 log "Starting system update and shutdown sequence"
 
 log "Running system maintenance..."
+/bin/check-if-already-updating.sh
 /bin/remove-old-kernels.sh
 /bin/remove-all-old-packages.sh
 /bin/remove-old-snaps.sh

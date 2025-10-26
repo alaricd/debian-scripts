@@ -1,0 +1,8 @@
+[Unit]
+Description=Auto-update and conditional reboot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/autoupdate-and-reboot.sh

@@ -37,12 +37,11 @@ for pkg in "${packages[@]}"; do
         apt-get install -y "$pkg"
         if [ $? -ne 0 ]; then
             echo "Error installing $pkg. Exiting."
-            exit 1
-        fi
-        if [ "$pkg" == "needrestart" ]; then
-            echo "configuring needrestart..."
-            sed -i 's/#\$nrconf{restart} = .*/\$nrconf{restart} = "a";/' /etc/needrestart/needrestart.conf
-
+        else
+            if [ "$pkg" == "needrestart" ]; then
+                echo "configuring needrestart..."
+                sed -i 's/#\$nrconf{restart} = .*/\$nrconf{restart} = "a";/' /etc/needrestart/needrestart.conf
+            fi
         fi
     else
         echo "$pkg is already installed."
