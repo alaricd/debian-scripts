@@ -6,13 +6,13 @@ PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
 
 # Logging function
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] autoupdate-shutdown: $1" >&2
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] autoupdate-shutdown: $1" >&2
 }
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
-    log "ERROR: This script must be run as root"
-    exit 1
+  log "ERROR: This script must be run as root"
+  exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
