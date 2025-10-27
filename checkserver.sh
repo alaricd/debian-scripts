@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 # Logging function
 log() {
@@ -27,10 +28,12 @@ if ! [[ "$port" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 log "Checking connectivity to $host:$port..."
 if ! nc -z "$host" "$port"; then
     log "Server $host:$port is not accessible, triggering update and reboot"
-    /bin/autoupdate-and-reboot.sh
+    "${SCRIPT_DIR}/autoupdate-and-reboot.sh"
 else
     log "Server $host:$port is accessible"
 fi

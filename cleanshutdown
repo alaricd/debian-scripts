@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
 
-# Determine the directory containing this script so we can invoke
-# companion scripts from the same location regardless of where the
-# user installs them. This keeps the setup self-contained in the
-# user's account.
+# Determine the directory containing this script so sibling helpers are invoked
+# correctly even when cleanshutdown is run from another location.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 sync && \
@@ -14,8 +13,7 @@ sync && \
 "${SCRIPT_DIR}/remove-old-snaps.sh" && \
 "${SCRIPT_DIR}/autoupdate.sh"
 
-# BleachBit runs occasionally fail; these should not block the
-# shutdown sequence, so we ignore their exit status.
+# BleachBit often fails on stale profiles; ignore those errors so shutdown proceeds.
 sudo -u "${USER}" /usr/bin/bleachbit -c --preset || true
 /usr/bin/bleachbit -c --preset || true
 

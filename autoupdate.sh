@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
+
 PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
 export DEBIAN_FRONTEND=noninteractive
 
@@ -14,13 +16,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# Check for required commands
-for cmd in dpkg apt-get deborphan; do
-    if ! command -v "$cmd" &> /dev/null; then
-        log "ERROR: Required command '$cmd' not found"
-        exit 1
-    fi
-done
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 log "Starting system update process"
 
@@ -33,15 +29,10 @@ apt-get update
 log "Upgrading system packages..."
 apt-get dist-upgrade -y
 
-log "Removing orphaned packages..."
-orphaned_packages=$(deborphan --guess-all | grep -v "$(apt-mark showmanual)" | tr '\n' ' ')
-if [[ -n "$orphaned_packages" ]]; then
-    apt-get purge $orphaned_packages -y
-else
-    log "No orphaned packages found"
-fi
+log "Removing old packages..."
+"${SCRIPT_DIR}/remove-all-old-packages.sh"
 
 log "Running requirements check..."
-/bin/check-requirements.sh
+"${SCRIPT_DIR}/check-requirements.sh"
 
 log "System update completed successfully"

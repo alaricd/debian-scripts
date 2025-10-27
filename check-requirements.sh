@@ -1,60 +1,62 @@
 #!/usr/bin/env bash
+set -Eeuo pipefail
+IFS=$'\n\t'
+
 export DEBIAN_FRONTEND=noninteractive
-# List of packages to check and install if necessary
 
-# Detect the distribution
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
+if [[ -f /etc/os-release ]]; then
+  # shellcheck disable=SC1091
+  . /etc/os-release
 fi
 
-# Define package lists specific to each distribution
-if [ "$ID" == "kali" ]; then
-    # Kali-specific package list (netcat is provided by default)
-    packages=("sed" "deborphan" "needrestart")
+declare -a packages
+
+case "${ID:-}" in
+  kali)
+    packages=(sed deborphan needrestart)
     if ! command -v nc >/dev/null 2>&1; then
-        echo "nc is not installed. Installing netcat-traditional..."
-        apt-get install -y netcat-traditional
-        if [ $? -ne 0 ]; then
-            echo "Error installing netcat-traditional. Exiting."
-            exit 1
-        fi
+      echo "nc is not installed. Installing netcat-traditional..."
+      if ! apt-get install -y netcat-traditional; then
+        echo "Error installing netcat-traditional. Exiting."
+        exit 1
+      fi
     fi
-elif [ "$ID" == "ubuntu" ]; then
-    # Ubuntu-specific package list
-    packages=("netcat-openbsd" "sed" "deborphan" "needrestart")
-elif [ "$ID" == "debian" ]; then
-    # Debian-specific package list
-    packages=("netcat-openbsd" "sed" "deborphan" "needrestart")
-else
-    echo "Unsupported distribution: $ID"
+    ;;
+  ubuntu|debian)
+    packages=(netcat-openbsd sed deborphan needrestart)
+    ;;
+  "")
+    echo "Warning: could not detect distribution; defaulting to Debian package set."
+    packages=(netcat-openbsd sed deborphan needrestart)
+    ;;
+  *)
+    echo "Unsupported distribution: ${ID}" >&2
     exit 1
-fi
+    ;;
+esac
 
-# Loop through the list of packages and install them if they are not already installed
 for pkg in "${packages[@]}"; do
-    if ! dpkg -s "$pkg" >/dev/null 2>&1; then
-        echo "$pkg is not installed. Installing..."
-        apt-get install -y "$pkg"
-        if [ $? -ne 0 ]; then
-            echo "Error installing $pkg. Exiting."
-        else
-            if [ "$pkg" == "needrestart" ]; then
-                echo "configuring needrestart..."
-                sed -i 's/#\$nrconf{restart} = .*/\$nrconf{restart} = "a";/' /etc/needrestart/needrestart.conf
-            fi
-        fi
-    else
-        echo "$pkg is already installed."
+  if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+    echo "$pkg is not installed. Installing..."
+    if ! apt-get install -y "$pkg"; then
+      echo "Error installing $pkg. Exiting."
+      exit 1
     fi
+    if [[ "$pkg" == "needrestart" ]]; then
+      echo "configuring needrestart..."
+      sed -i 's/#\$nrconf{restart} = .*/\$nrconf{restart} = "a";/' /etc/needrestart/needrestart.conf
+    fi
+  else
+    echo "$pkg is already installed."
+  fi
 done
 
 if command -v needrestart >/dev/null 2>&1; then
-    echo "Restarting services with stale binaries..."
-    needrestart -r a
-    if [ $? -ne 0 ]; then
-        echo "needrestart failed. Exiting."
-        exit 1
-    fi
+  echo "Restarting services with stale binaries..."
+  if ! needrestart -r a; then
+    echo "needrestart failed. Exiting."
+    exit 1
+  fi
 fi
 
 echo "All packages checked and necessary ones installed."
