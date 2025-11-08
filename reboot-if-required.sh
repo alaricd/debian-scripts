@@ -33,7 +33,41 @@ else
   log "No reboot flag detected, checking for service restarts..."
   if command -v needrestart &> /dev/null; then
     log "Restarting affected services automatically..."
+
+    # First pass: restart services that needrestart can handle automatically
     /usr/sbin/needrestart -r a
+
+    # Check for active user sessions
+    active_users=$(who | wc -l)
+    active_sessions=$(loginctl list-sessions --no-legend 2>/dev/null | grep -v "lingering" | wc -l || echo "0")
+
+    if [ "$active_users" -eq 0 ] && [ "$active_sessions" -eq 0 ]; then
+      log "No active user sessions detected, safe to restart deferred services"
+
+      # Get list of services that still need restart
+      deferred_services=$(needrestart -b 2>/dev/null | grep -E '^NEEDRESTART-SVC:' | cut -d: -f2 || true)
+
+      if [ -n "$deferred_services" ]; then
+        log "Restarting deferred services:"
+        echo "$deferred_services" | while read -r service; do
+          if [ -n "$service" ]; then
+            log "  Restarting ${service}..."
+            systemctl restart "${service}" 2>&1 | sed "s/^/    /" || log "    Warning: Failed to restart ${service}"
+          fi
+        done
+      fi
+    else
+      log "Active user sessions detected (users: $active_users, sessions: $active_sessions)"
+      log "Skipping restart of critical services to avoid disrupting user sessions"
+
+      # List what services are deferred
+      deferred_services=$(needrestart -b 2>/dev/null | grep -E '^NEEDRESTART-SVC:' | cut -d: -f2 || true)
+      if [ -n "$deferred_services" ]; then
+        log "The following services need restart but are deferred:"
+        echo "$deferred_services" | sed 's/^/  - /' >&2
+      fi
+    fi
+
     log "Service restart process completed"
   else
     log "needrestart not available, skipping service restart"

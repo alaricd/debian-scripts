@@ -68,4 +68,4 @@ sudo ./check-requirements.sh
 
 - **Kali Linux**: Special handling for netcat (checks `nc` command, installs `netcat-traditional` if needed)
 - **Ubuntu/Debian**: Uses `netcat-openbsd` package
-- **Package management**: Uses `deborphan`, `needrestart`, and standard apt tools
+- **Package management**: Uses `needrestart` and standard apt tools

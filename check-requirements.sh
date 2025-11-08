@@ -13,7 +13,7 @@ declare -a packages
 
 case "${ID:-}" in
   kali)
-    packages=(sed deborphan needrestart)
+    packages=("sed" "needrestart" "fwupd")
     if ! command -v nc >/dev/null 2>&1; then
       echo "nc is not installed. Installing netcat-traditional..."
       if ! apt-get install -y netcat-traditional; then
@@ -23,11 +23,11 @@ case "${ID:-}" in
     fi
     ;;
   ubuntu|debian)
-    packages=(netcat-openbsd sed deborphan needrestart)
+    packages=("netcat-openbsd" "sed" "needrestart" "fwupd")
     ;;
   "")
     echo "Warning: could not detect distribution; defaulting to Debian package set."
-    packages=(netcat-openbsd sed deborphan needrestart)
+    packages=("netcat-openbsd" "sed" "needrestart" "fwupd")
     ;;
   *)
     echo "Unsupported distribution: ${ID}" >&2

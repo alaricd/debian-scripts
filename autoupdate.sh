@@ -24,10 +24,16 @@ log "Configuring packages..."
 dpkg --configure -a --force-confdef --force-confold
 
 log "Updating package lists..."
-apt-get update
+apt-get update -y
 
 log "Upgrading system packages..."
 apt-get dist-upgrade -y
+
+log "Autoremoving unused packages..."
+apt-get autoremove --purge -y
+
+log "Updating firmware..."
+"${SCRIPT_DIR}/update-firmware.sh"
 
 log "Removing old packages..."
 "${SCRIPT_DIR}/remove-all-old-packages.sh"

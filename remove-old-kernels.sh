@@ -2,6 +2,7 @@
 set -e
 
 PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
+export DEBIAN_FRONTEND=noninteractive
 
 # Logging function
 log() {

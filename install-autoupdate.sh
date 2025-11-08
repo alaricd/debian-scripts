@@ -30,23 +30,44 @@ main() {
   ensure_command install
   ensure_command apt-get
 
-  local script_dir target_script service_unit timer_unit
+  local script_dir target_dir service_unit timer_unit
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  target_script="/usr/local/sbin/autoupdate-and-reboot.sh"
+  target_dir="/usr/local/sbin"
   service_unit="/etc/systemd/system/autoupdate.service"
   timer_unit="/etc/systemd/system/autoupdate.timer"
 
-  if [[ ! -f "$script_dir/autoupdate-and-reboot.sh" ]]; then
-    err "autoupdate-and-reboot.sh not found alongside installer"
-    exit 1
-  fi
+  # List of required scripts
+  local required_scripts=(
+    "autoupdate-and-reboot.sh"
+    "autoupdate-and-shutdown.sh"
+    "autoupdate.sh"
+    "check-if-already-updating.sh"
+    "remove-old-kernels.sh"
+    "remove-old-snaps.sh"
+    "remove-all-old-packages.sh"
+    "reboot-if-required.sh"
+    "check-requirements.sh"
+    "update-firmware.sh"
+  )
+
+  # Verify all required scripts exist
+  for script in "${required_scripts[@]}"; do
+    if [[ ! -f "$script_dir/$script" ]]; then
+      err "$script not found in $script_dir"
+      exit 1
+    fi
+  done
+
   if [[ ! -f "$script_dir/systemd/autoupdate.service" || ! -f "$script_dir/systemd/autoupdate.timer" ]]; then
     err "systemd units missing; run from repository root"
     exit 1
   fi
 
-  log "installing autoupdate-and-reboot.sh to ${target_script}"
-  install -Dm755 "$script_dir/autoupdate-and-reboot.sh" "$target_script"
+  log "installing scripts to ${target_dir}"
+  for script in "${required_scripts[@]}"; do
+    log "  installing $script"
+    install -Dm755 "$script_dir/$script" "$target_dir/$script"
+  done
 
   log "installing systemd units"
   install -Dm644 "$script_dir/systemd/autoupdate.service" "$service_unit"

@@ -4,7 +4,7 @@ set -e
 script="$(dirname "$0")/../check-requirements.sh"
 
 # positive test: Kali packages exclude nc and include required tools
-if ! grep -q 'packages=("sed" "deborphan" "needrestart")' "$script"; then
+if ! grep -q 'packages=("sed" "needrestart" "fwupd")' "$script"; then
   echo "Expected Kali package list without nc" >&2
   exit 1
 fi
@@ -24,6 +24,12 @@ fi
 # positive test: script runs needrestart to restart services automatically
 if ! grep -q 'needrestart -r a' "$script"; then
   echo "Expected needrestart automatic restart command" >&2
+  exit 1
+fi
+
+# positive test: script includes fwupd in all package lists
+if ! grep -q '"fwupd"' "$script"; then
+  echo "Expected fwupd in package lists" >&2
   exit 1
 fi
 
