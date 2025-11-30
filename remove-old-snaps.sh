@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
+PATH="${PATH:-/usr/bin:/bin:/usr/sbin:/sbin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 # Removes old revisions of snaps
 # CLOSE ALL SNAPS BEFORE RUNNING THIS
 set -eu

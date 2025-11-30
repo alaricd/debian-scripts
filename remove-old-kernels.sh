@@ -1,63 +1,60 @@
 #!/usr/bin/env bash
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
 
-PATH=/bin:/usr/sbin:/sbin:/usr/local/sbin
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
+PATH="${PATH:-/usr/bin:/bin:/usr/sbin:/sbin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export DEBIAN_FRONTEND=noninteractive
 
-# Logging function
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] remove-old-kernels: $1" >&2
-}
+running_release="$(uname -r)"
+running_pkg=""
+running_version=""
 
-# Check if running as root or with sudo
-if [[ $EUID -ne 0 ]] && ! command -v sudo &> /dev/null; then
-    log "ERROR: This script requires root privileges or sudo"
-    exit 1
+candidate_releases=("$running_release")
+if [[ "$running_release" == *-amd64 ]]; then
+  candidate_releases+=("${running_release/-amd64/-generic}")
 fi
 
-# Check for required commands
-for cmd in uname dpkg awk grep sort apt-get; do
-    if ! command -v "$cmd" &> /dev/null; then
-        log "ERROR: Required command '$cmd' not found"
-        exit 1
+for release in "${candidate_releases[@]}"; do
+  for prefix in linux-image linux-image-unsigned; do
+    candidate="${prefix}-${release}"
+    if dpkg-query -W -f='${Status}\n' "$candidate" 2>/dev/null | grep -q 'install ok installed'; then
+      running_pkg="$candidate"
+      running_version="$(dpkg-query -W -f='${Version}' "$candidate" 2>/dev/null || true)"
+      break 2
     fi
+  done
 done
 
-log "Starting kernel cleanup process"
-
-# Get the version of the currently running kernel
-current_kernel_version=$(uname -r)
-log "Current kernel version: $current_kernel_version"
-
-# Define meta-packages to exclude
-meta_packages="linux-image-generic linux-image-lowlatency linux-image-raspi linux-image-cloud"
-
-# Get a list of installed kernel images, excluding the current one and meta-packages
-log "Scanning for installed kernel packages..."
-installed_kernels=$(dpkg --list | grep linux-image | awk '{print $2}' | grep -vE "$current_kernel_version|$meta_packages" | sort -V)
-
-if [[ -z "$installed_kernels" ]]; then
-    log "No additional kernel packages found"
-else
-    log "Found kernel packages: $installed_kernels"
+if [[ -z "$running_pkg" || -z "$running_version" ]]; then
+  echo "Unable to determine running kernel package for ${running_release}" >&2
+  exit 0
 fi
 
-# Get the list of kernels to remove
-kernels_to_remove=()
-for kernel in $installed_kernels; do
-    kernel_version=$(echo $kernel | sed -n 's/linux-image-\([0-9.-]*\)-generic/\1/p')
-    if [ ! -z "$kernel_version" ] && dpkg --compare-versions "$kernel_version" lt "$current_kernel_version"; then
-        kernels_to_remove+=("$kernel")
-    fi
+mapfile -t installed_kernels < <(dpkg-query -W -f='${Package} ${Version}\n' 'linux-image-*' 'linux-image-unsigned-*' 2>/dev/null || true)
+
+to_purge=()
+for entry in "${installed_kernels[@]}"; do
+  pkg_name="${entry%% *}"
+  pkg_version="${entry#* }"
+
+  # Skip meta-packages that do not track a specific kernel ABI.
+  if [[ ! "$pkg_name" =~ ^linux-image(-unsigned)?-[0-9] ]]; then
+    continue
+  fi
+
+  if [[ "$pkg_name" == "$running_pkg" ]]; then
+    continue
+  fi
+
+  if dpkg --compare-versions "$pkg_version" lt "$running_version"; then
+    to_purge+=("$pkg_name")
+  fi
 done
 
-# Remove kernels that are older than the current kernel
-if [ ${#kernels_to_remove[@]} -gt 0 ]; then
-    log "Removing old kernels: ${kernels_to_remove[*]}"
-    sudo apt-get purge -y "${kernels_to_remove[@]}"
-    log "Successfully removed ${#kernels_to_remove[@]} old kernel(s)"
-else
-    log "No old kernels to remove"
+if [[ "${#to_purge[@]}" -gt 0 ]]; then
+  apt-get purge -y "${to_purge[@]}"
 fi
-
-log "Kernel cleanup completed successfully"

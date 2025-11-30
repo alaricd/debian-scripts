@@ -6,15 +6,16 @@ IFS=$'\n\t'
 # correctly even when cleanshutdown is run from another location.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-sync && \
-"${SCRIPT_DIR}/check-if-already-updating.sh" && \
-"${SCRIPT_DIR}/remove-old-kernels.sh" && \
-"${SCRIPT_DIR}/remove-all-old-packages.sh" && \
-"${SCRIPT_DIR}/remove-old-snaps.sh" && \
-"${SCRIPT_DIR}/autoupdate.sh"
+if [[ $EUID -ne 0 && "${CLEANSHUTDOWN_ALLOW_NONROOT:-0}" != "1" ]]; then
+  echo "cleanshutdown must run as root" >&2
+  exit 1
+fi
 
-# BleachBit often fails on stale profiles; ignore those errors so shutdown proceeds.
-sudo -u "${USER}" /usr/bin/bleachbit -c --preset || true
-/usr/bin/bleachbit -c --preset || true
+sync
+"${SCRIPT_DIR}/check-if-already-updating.sh"
+NO_REBOOT=1 "${SCRIPT_DIR}/autoupdate-and-reboot.sh"
+
+sudo -u "${SUDO_USER:-$USER}" bleachbit -c --preset || true
+bleachbit -c --preset || true
 
 shutdown -h now

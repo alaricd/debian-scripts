@@ -101,6 +101,31 @@ printf 'reboot\n' >> "$state_dir/reboot.log"
 exit 0
 STUB
   chmod +x "$STUB_DIR/reboot"
+
+  cat <<'STUB' > "$STUB_DIR/dpkg-query"
+#!/usr/bin/env bash
+set -euo pipefail
+# Stub for dpkg-query used by remove-old-kernels.sh
+exit 0
+STUB
+  chmod +x "$STUB_DIR/dpkg-query"
+
+  cat <<'STUB' > "$STUB_DIR/apt-mark"
+#!/usr/bin/env bash
+set -euo pipefail
+# Stub for apt-mark used by remove-all-old-packages.sh
+printf 'Canceled marking change.\n'
+exit 0
+STUB
+  chmod +x "$STUB_DIR/apt-mark"
+
+  cat <<'STUB' > "$STUB_DIR/snap"
+#!/usr/bin/env bash
+set -euo pipefail
+# Stub for snap used by remove-old-snaps.sh
+exit 0
+STUB
+  chmod +x "$STUB_DIR/snap"
 }
 
 teardown() {
@@ -146,7 +171,7 @@ teardown() {
 }
 
 @test "honors NO_REBOOT when forced" {
-  run NO_REBOOT=1 REBOOT_FORCE=1 ./autoupdate-and-reboot.sh
+  run env NO_REBOOT=1 REBOOT_FORCE=1 ./autoupdate-and-reboot.sh
   [ "$status" -eq 0 ]
   [ ! -f "$AUTOTEST_STATE_DIR/reboot.log" ]
 }

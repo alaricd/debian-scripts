@@ -8,7 +8,7 @@ setup() {
 
   STUB_BIN="$TEST_ROOT/bin"
   mkdir -p "$STUB_BIN"
-  export PATH="$STUB_BIN"
+  export PATH="$STUB_BIN:/bin:/usr/bin"
 
   ln -s "$BATS_TEST_DIRNAME/../cleanshutdown" "$TEST_ROOT/cleanshutdown"
 
@@ -78,16 +78,16 @@ teardown() {
 }
 
 @test "cleanshutdown orchestrates maintenance and shutdown with bleachbit" {
-  run CLEANSHUTDOWN_ALLOW_NONROOT=1 SUDO_USER=tester "$TEST_ROOT/cleanshutdown"
+  run env CLEANSHUTDOWN_ALLOW_NONROOT=1 SUDO_USER=tester "$TEST_ROOT/cleanshutdown"
   [ "$status" -eq 0 ]
   run cat "$CLEANSHUTDOWN_STATE_DIR/order.log"
   [ "$status" -eq 0 ]
   mapfile -t order < "$CLEANSHUTDOWN_STATE_DIR/order.log"
   [ "${order[0]}" = "check-if-already-updating.sh" ]
-  [ "${order[1]}" = "remove-old-kernels.sh" ]
-  [ "${order[2]}" = "remove-all-old-packages.sh" ]
-  [ "${order[3]}" = "remove-old-snaps.sh" ]
-  [ "${order[4]}" = "autoupdate-and-reboot.sh" ]
+  [ "${order[1]}" = "autoupdate-and-reboot.sh" ]
+  # Cleanup scripts (remove-old-kernels, remove-old-snaps, remove-all-old-packages)
+  # are now called internally by autoupdate-and-reboot.sh, not by cleanshutdown
+  [ "${#order[@]}" -eq 2 ]
 
   run cat "$CLEANSHUTDOWN_STATE_DIR/commands.log"
   [ "$status" -eq 0 ]

@@ -113,7 +113,7 @@ teardown() {
 }
 
 @test "purges kernels older than the running kernel package" {
-  run AUTOTEST_SCENARIO=remove_one ./remove-old-kernels.sh
+  run env AUTOTEST_SCENARIO=remove_one ./remove-old-kernels.sh
   [ "$status" -eq 0 ]
   run cat "$AUTOTEST_STATE_DIR/apt-get.log"
   [ "$status" -eq 0 ]
@@ -121,13 +121,13 @@ teardown() {
 }
 
 @test "does not purge kernels that are current or newer" {
-  run AUTOTEST_SCENARIO=keep_newer ./remove-old-kernels.sh
+  run env AUTOTEST_SCENARIO=keep_newer ./remove-old-kernels.sh
   [ "$status" -eq 0 ]
   [ ! -f "$AUTOTEST_STATE_DIR/apt-get.log" ]
 }
 
 @test "handles unsigned kernel packages" {
-  run AUTOTEST_SCENARIO=unsigned_current ./remove-old-kernels.sh
+  run env AUTOTEST_SCENARIO=unsigned_current ./remove-old-kernels.sh
   [ "$status" -eq 0 ]
   run cat "$AUTOTEST_STATE_DIR/apt-get.log"
   [ "$status" -eq 0 ]

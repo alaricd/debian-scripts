@@ -30,12 +30,12 @@ if grep -q "/bin/check-if-already-updating.sh" "$script"; then
 fi
 
 # positive test: BleachBit commands ignore failures
-if ! grep -q 'sudo -u "\${USER}" /usr/bin/bleachbit -c --preset || true' "$script"; then
+if ! grep -q 'sudo -u "\${SUDO_USER:-\$USER}" bleachbit -c --preset || true' "$script"; then
   echo "BleachBit user command must ignore failures" >&2
   exit 1
 fi
 
-if ! grep -q '/usr/bin/bleachbit -c --preset || true' "$script"; then
+if ! grep 'bleachbit -c --preset || true' "$script" | grep -q -v 'sudo -u'; then
   echo "BleachBit root command must ignore failures" >&2
   exit 1
 fi

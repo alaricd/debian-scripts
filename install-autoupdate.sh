@@ -63,6 +63,18 @@ main() {
     exit 1
   fi
 
+  # Stop services before updating files
+  if command -v systemctl >/dev/null 2>&1; then
+    if systemctl is-active --quiet autoupdate.timer; then
+      log "stopping autoupdate.timer before update"
+      systemctl stop autoupdate.timer
+    fi
+    if systemctl is-active --quiet autoupdate.service; then
+      log "stopping autoupdate.service before update"
+      systemctl stop autoupdate.service
+    fi
+  fi
+
   log "installing scripts to ${target_dir}"
   for script in "${required_scripts[@]}"; do
     log "  installing $script"
@@ -86,8 +98,9 @@ main() {
     log "reloading systemd units"
     systemctl daemon-reload
 
-    log "enabling autoupdate.timer"
-    systemctl enable --now autoupdate.timer
+    log "enabling and starting autoupdate.timer with updated files"
+    systemctl enable autoupdate.timer
+    systemctl start autoupdate.timer
 
     log "disabling apt-daily-upgrade.timer to avoid lock contention"
     systemctl disable --now apt-daily-upgrade.timer || true
