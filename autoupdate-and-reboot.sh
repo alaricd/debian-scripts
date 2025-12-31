@@ -11,14 +11,23 @@ export DEBIAN_FRONTEND=noninteractive
 
 LOGFILE="${LOGFILE:-/var/log/autoupdate.log}"
 LOCKFILE="${LOCKFILE:-/var/lock/autoupdate.lock}"
+REBOOT_REQUIRED_FILE="${REBOOT_REQUIRED_FILE:-/var/run/reboot-required}"
 
 # shellcheck disable=SC1091
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/autoupdate.sh"
 
+force_reboot=0
+
 # If any argument is provided, treat it as a request to force a reboot flag
 if [[ $# -gt 0 ]]; then
-  touch /var/run/reboot-required
+  force_reboot=1
+  mkdir -p "$(dirname "$REBOOT_REQUIRED_FILE")"
+  touch "$REBOOT_REQUIRED_FILE"
+fi
+
+if [[ "${REBOOT_FORCE:-0}" == "1" ]]; then
+  force_reboot=1
 fi
 
 mkdir -p "$(dirname "$LOGFILE")" "$(dirname "$LOCKFILE")"
@@ -54,30 +63,37 @@ log "starting system update"
 
 run_autoupdate log
 pending_upgrades="${PENDING_UPGRADES:-0}"
+if [[ "${NEEDRESTART_FAILED:-0}" == "1" ]]; then
+  reboot_required=1
+fi
 
 log "removing old packages"
 "${SCRIPT_DIR}/remove-all-old-packages.sh"
 
-if [ -f /var/run/reboot-required ] || [[ "${REBOOT_FORCE:-0}" == "1" ]]; then
+if [ -f "$REBOOT_REQUIRED_FILE" ] || [[ "$force_reboot" == "1" ]]; then
   reboot_required=1
 fi
 
 log "status uname=$(uname -srm) pending=${pending_upgrades} reboot_required=${reboot_required}"
 
 if [[ "$reboot_required" == "1" ]]; then
-  if [[ "${NO_REBOOT:-0}" == "1" ]]; then
-    log "reboot required but suppressed by NO_REBOOT=1"
-    exit 0
-  fi
+  if [[ "$force_reboot" == "0" ]]; then
+    if [[ "${NO_REBOOT:-0}" == "1" ]]; then
+      log "reboot required but suppressed by NO_REBOOT=1"
+      exit 0
+    fi
 
-  if command -v systemd-detect-virt >/dev/null 2>&1 && systemd-detect-virt --quiet; then
-    log "reboot required but running inside a container; skipping reboot"
-    exit 0
-  fi
+    if command -v systemd-detect-virt >/dev/null 2>&1 && systemd-detect-virt --quiet; then
+      log "reboot required but running inside a container; skipping reboot"
+      exit 0
+    fi
 
-  if who >/dev/null 2>&1 && [[ -n "$(who)" ]]; then
-    log "active user sessions detected; skipping reboot"
-    exit 0
+    if who >/dev/null 2>&1 && [[ -n "$(who)" ]]; then
+      log "active user sessions detected; skipping reboot"
+      exit 0
+    fi
+  else
+    log "reboot forced; bypassing safety checks"
   fi
 
   log "reboot required; rebooting now"

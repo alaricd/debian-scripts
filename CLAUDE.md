@@ -4,110 +4,87 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains a collection of bash scripts for automating Debian/Ubuntu system maintenance tasks. The scripts handle system updates, package cleanup, kernel management, and automated shutdown/reboot sequences.
+This repository contains Bash scripts for automating Debian/Ubuntu/Kali system maintenance, including package updates, cleanup, and automated shutdown/reboot flows.
 
 ## Architecture
 
-The project follows a modular design where:
+- **Primary entrypoint**: `autoupdate-and-reboot.sh` orchestrates the full update flow, logging, locking, and reboot policy.
+- **Sourceable library**: `autoupdate.sh` implements the apt update/upgrade flow and exports `run_autoupdate()`.
+- **Orchestration helpers**: `autoupdate-and-shutdown.sh` and `cleanshutdown` wrap the main flow with shutdown handling.
+- **Utility scripts**: `remove-old-kernels.sh`, `remove-old-snaps.sh`, `remove-all-old-packages.sh`, `check-requirements.sh`, `check-if-already-updating.sh`.
+- **Tests**: Bats specs in `test/`, legacy bash tests in `tests/`.
 
-- **Main orchestration scripts**: `cleanshutdown`, `autoupdate-and-reboot.sh`, `autoupdate-and-shutdown.sh`
-- **Core functionality scripts**: Individual scripts for specific tasks (update, cleanup, kernel management)
-- **Utility scripts**: Helper scripts for prerequisites and status checking
-- **Self-contained design**: Scripts use `SCRIPT_DIR` variable to reference companion scripts from the same location
+### autoupdate-and-reboot.sh Workflow
 
-### Script Dependencies and Flow
+1. Initializes logging to `/var/log/autoupdate.log` and syslog, and takes a non-blocking lock at `/var/lock/autoupdate.lock`.
+2. Runs maintenance in this order:
+   - `remove-old-kernels.sh`
+   - `remove-old-snaps.sh`
+   - `run_autoupdate` from `autoupdate.sh`
+   - `remove-all-old-packages.sh`
+3. Determines reboot requirement when `/var/run/reboot-required` exists, `REBOOT_FORCE=1`, or needrestart reports failures.
+4. Skips reboot when `NO_REBOOT=1`, inside a container (`systemd-detect-virt`), or when `who` reports active sessions, unless reboot is forced.
+5. Passing any argument forces a reboot and bypasses safety checks.
+5. Emits the final status line: `status uname=… pending=… reboot_required=…`.
 
-1. **cleanshutdown** (main orchestration script):
-   - Uses `SCRIPT_DIR` to locate companion scripts in user directory
-   - Delegates to `autoupdate-and-reboot.sh` with NO_REBOOT=1
-   - Runs BleachBit cleanup (failures ignored with `|| true`)
-   - Performs system shutdown
+### autoupdate.sh
 
-2. **Update sequence**: `check-if-already-updating.sh` → `remove-old-kernels.sh` → `remove-old-snaps.sh` (snap refresh + cleanup) → `autoupdate.sh` (apt-get update/dist-upgrade) → `remove-all-old-packages.sh` (final autoremove)
+- Sourceable library that defines `run_autoupdate()` and a fallback logger `log_default`.
+- Steps:
+  - `apt-get update`
+  - `apt-get dist-upgrade -s` to compute `PENDING_UPGRADES`
+  - `apt-get dist-upgrade`
+- `needrestart -r a` when available; failures mark a reboot requirement but do not abort the run
+  - `apt-get autoremove --purge`
 
-3. **Requirements management**: `check-requirements.sh` detects distribution (Kali/Ubuntu/Debian) and installs required packages with distribution-specific handling
+### Orchestration Scripts
 
-### autoupdate.sh Architecture
+- `autoupdate-and-shutdown.sh` runs `check-if-already-updating.sh`, then `autoupdate-and-reboot.sh` with `NO_REBOOT=1`, then `shutdown -h now`.
+- `cleanshutdown` requires root unless `CLEANSHUTDOWN_ALLOW_NONROOT=1`, runs `sync`, `check-if-already-updating.sh`, the main update flow with `NO_REBOOT=1`, then runs BleachBit for the invoking user and root before shutdown.
 
-- `autoupdate.sh` is a sourceable library that exports `run_autoupdate()` function
-- Takes a logger function name as first parameter (defaults to `log_default`)
-- Can be sourced by orchestration scripts or run standalone
-- Exports `PENDING_UPGRADES` variable containing upgrade count from simulation
-- Returns non-zero on failure to prevent reboots on partial failures
+### Utility Script Notes
 
-### Autoupdate-and-Reboot Workflow
-
-- Uses `flock` to prevent concurrent execution
-- Logs to both `/var/log/autoupdate.log` and syslog
-- Runs in strict mode (`set -Eeuo pipefail`)
-- **Execution order rationale**:
-  1. Remove old kernels first to free `/boot` space (prevents apt-get failures when installing new kernels)
-  2. Refresh and clean up snaps before apt updates (frees disk space and updates snap packages)
-  3. Run apt-get update/dist-upgrade (main system updates)
-  4. Final autoremove to clean up packages made obsolete by the upgrade
-- Only reboots when `/var/run/reboot-required` exists or `REBOOT_FORCE=1`
-- Automatically skips reboots for containers, active TTY sessions, or when `NO_REBOOT=1`
-- Emits final status line with format: `status uname=… pending=… reboot_required=…`
+- `check-if-already-updating.sh` exits early if `apt-get`/`dpkg` are running, then runs `dpkg --configure -a`.
+- `remove-old-kernels.sh` finds the running kernel package (including unsigned variants), then purges only older kernel ABI packages.
+- `remove-old-snaps.sh` refreshes snaps and removes disabled revisions if `snap` is installed.
+- `remove-all-old-packages.sh` runs `apt-mark minimize-manual` and loops `apt-get autoremove --purge` until no more removals (or 10 iterations).
+- `check-requirements.sh` installs required packages based on `/etc/os-release` and configures needrestart to auto-restart.
 
 ## Common Development Tasks
 
 ### Running Tests
 ```bash
-# Run all tests
 make test
-
-# Run specific test suite
 bats test/autoupdate.bats
 bats test/cleanshutdown.bats
 bats test/remove-old-kernels.bats
 
-# Tests in tests/ directory (legacy bash-based tests)
+# Legacy tests (require sudo)
 sudo ./tests/test_check_requirements.sh
 sudo ./tests/test_cleanshutdown.sh
 ```
 
 ### Linting
 ```bash
-# Lint all scripts
 make lint
-
-# Uses shellcheck for static analysis and shfmt for formatting
 ```
 
 ### Installing/Uninstalling
 ```bash
-# Install systemd service and timer
 make install
-
-# Or use the install script directly
 sudo ./install-autoupdate.sh
-
-# Uninstall everything
 make uninstall
 ```
 
-## Key Design Patterns
+## Test Environment Overrides
 
-1. **Path Independence**: Scripts use `SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"` to work from any installation location
-2. **Distribution Awareness**: `check-requirements.sh` detects OS and handles package differences (Kali vs Ubuntu/Debian)
-3. **Error Handling**: Critical operations use `set -e`, optional operations use `|| true`
-4. **Service Management**: Automatic service restart using `needrestart -r a`
-5. **Non-interactive Mode**: All scripts set `DEBIAN_FRONTEND=noninteractive`
-6. **Sourceable Functions**: Core logic in `autoupdate.sh` can be sourced and called with custom logger
-
-## Testing Strategy
-
-- BATS tests in `test/` directory for main scripts (modern approach)
-- Legacy bash tests in `tests/` directory
-- Tests use stubs/mocks for system commands (`apt-get`, `reboot`, `needrestart`, etc.)
-- Test environment variables:
-  - `AUTOTEST_STATE_DIR`: Directory for test state files
-  - `AUTOTEST_TTY_ACTIVE`: Simulate active TTY sessions
-  - `AUTOTEST_NEEDRESTART_FAIL`: Force needrestart failures
-- Tests validate both positive and negative cases, execution order, and strict mode
+- `LOGFILE`, `LOCKFILE`: redirect log/lock files away from `/var`.
+- `REBOOT_REQUIRED_FILE`: override the reboot-required flag path (defaults to `/var/run/reboot-required`).
+- `NO_REBOOT`, `REBOOT_FORCE`: control reboot behavior.
+- `AUTOTEST_STATE_DIR`, `AUTOTEST_TTY_ACTIVE`, `AUTOTEST_NEEDRESTART_FAIL`, `AUTOTEST_SCENARIO`: bats stubs.
+- `CLEANSHUTDOWN_ALLOW_NONROOT`: allow `cleanshutdown` to run without root in tests.
 
 ## Distribution Support
 
-- **Kali Linux**: Special handling for netcat (checks `nc` command, installs `netcat-traditional` if needed)
-- **Ubuntu/Debian**: Uses `netcat-openbsd` package
-- **Package management**: Uses `needrestart` and standard apt tools
+- **Kali**: installs `sed`, `needrestart`, `fwupd`; ensures `netcat-traditional` if `nc` is missing.
+- **Ubuntu/Debian**: installs `netcat-openbsd`, `sed`, `needrestart`, `fwupd`.

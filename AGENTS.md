@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Core automation lives at the repo root. `autoupdate-and-reboot.sh` is the primary entrypoint and now handles logging, locking, retry, autoremove ordering, and reboot policy on its own. Supporting scripts (`autoupdate-and-shutdown.sh`, `remove-old-kernels.sh`, etc.) remain in the root for backwards compatibility. Systemd units reside under `systemd/`, GitHub Actions workflows under `.github/workflows/`, and bats specs under `test/`. Keep new scripts executable, add succinct header comments, and document any required capabilities.
+Core automation lives at the repo root. `autoupdate-and-reboot.sh` is the primary entrypoint and now handles logging, locking, autoremove ordering, and reboot policy on its own. `autoupdate.sh` is the sourceable library that implements the apt update/upgrade flow. Supporting scripts (`autoupdate-and-shutdown.sh`, `cleanshutdown`, `remove-old-kernels.sh`, etc.) remain in the root for orchestration and backwards compatibility. Systemd units reside under `systemd/`, GitHub Actions workflows under `.github/workflows/`, bats specs under `test/`, and legacy bash tests under `tests/`. Keep new scripts executable, add succinct header comments, and document any required capabilities.
 
 ## Build, Test, and Development Commands
 Prefer `make` targets:
@@ -9,7 +9,7 @@ Prefer `make` targets:
 - `sudo ./install-autoupdate.sh` provides a standalone installer for production hosts without build tooling.
 - `make lint` runs `shellcheck` and `shfmt -d .` across the tree.
 - `make test` executes the bats suite (`test/autoupdate.bats`) with mocked apt interactions.
-When hacking locally, export `LOGFILE`/`LOCKFILE` to temporary paths to avoid writing to `/var/`.
+When hacking locally, export `LOGFILE`/`LOCKFILE` to temporary paths to avoid writing to `/var/`; use `NO_REBOOT=1` and `CLEANSHUTDOWN_ALLOW_NONROOT=1` when running orchestration scripts in dev environments.
 
 ## Coding Style & Naming Conventions
 Author scripts in Bash, enforce `#!/usr/bin/env bash` and `set -Eeuo pipefail` (also set `IFS=$'\n\t'` for new work). Use two-space indentation, lowercase-with-hyphen filenames, and `$()` command substitutions. Guard external commands with `command -v` when optional, wrap expansions in quotes, and log through the shared `log()` helper in `autoupdate-and-reboot.sh` when extending functionality.

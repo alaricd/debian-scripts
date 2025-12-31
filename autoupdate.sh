@@ -13,8 +13,11 @@ log_default() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] autoupdate: $*" >&2
 }
 
+NEEDRESTART_FAILED=0
+
 run_autoupdate() {
   local logger="${1:-log_default}"
+  NEEDRESTART_FAILED=0
 
   if ! command -v "$logger" >/dev/null 2>&1; then
     logger="log_default"
@@ -43,8 +46,8 @@ run_autoupdate() {
   if command -v needrestart >/dev/null 2>&1; then
     "$logger" "restarting affected services via needrestart"
     if ! needrestart -r a; then
-      "$logger" "needrestart reported failures"
-      return 1
+      "$logger" "needrestart reported failures; scheduling reboot"
+      NEEDRESTART_FAILED=1
     fi
   fi
 
