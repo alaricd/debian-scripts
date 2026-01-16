@@ -10,6 +10,7 @@ if [[ -f /etc/os-release ]]; then
 fi
 
 declare -a packages
+x_installed=0
 
 case "${ID:-}" in
   kali)
@@ -34,6 +35,15 @@ case "${ID:-}" in
     exit 1
     ;;
 esac
+
+if command -v Xorg >/dev/null 2>&1 || dpkg -s xorg >/dev/null 2>&1 || dpkg -s xserver-xorg-core >/dev/null 2>&1; then
+  x_installed=1
+fi
+
+if [[ "$x_installed" == "1" ]]; then
+  # Only install bleachbit when an X install is already present.
+  packages+=("bleachbit")
+fi
 
 for pkg in "${packages[@]}"; do
   if ! dpkg -s "$pkg" >/dev/null 2>&1; then

@@ -53,6 +53,9 @@ fi
 pending_upgrades=0
 reboot_required=0
 
+log "checking requirements"
+"${SCRIPT_DIR}/check-requirements.sh"
+
 log "removing old kernels"
 "${SCRIPT_DIR}/remove-old-kernels.sh"
 
