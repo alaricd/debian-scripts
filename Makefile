@@ -8,6 +8,7 @@ SHFMT ?= shfmt
 BATS ?= bats
 
 SCRIPT := autoupdate-and-reboot.sh
+CLEANSHUTDOWN := cleanshutdown
 SERVICE := systemd/autoupdate.service
 TIMER := systemd/autoupdate.timer
 
@@ -15,6 +16,7 @@ TIMER := systemd/autoupdate.timer
 
 install: $(SCRIPT) $(SERVICE) $(TIMER)
 	install -Dm755 $(SCRIPT) $(DESTDIR)$(SBINDIR)/autoupdate-and-reboot.sh
+	install -Dm755 $(CLEANSHUTDOWN) $(DESTDIR)$(SBINDIR)/cleanshutdown
 	install -Dm644 $(SERVICE) $(DESTDIR)$(SYSTEMD_UNIT_DIR)/autoupdate.service
 	install -Dm644 $(TIMER) $(DESTDIR)$(SYSTEMD_UNIT_DIR)/autoupdate.timer
 	$(SYSTEMCTL) daemon-reload

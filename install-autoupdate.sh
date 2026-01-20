@@ -40,6 +40,7 @@ main() {
   local required_scripts=(
     "autoupdate-and-reboot.sh"
     "autoupdate-and-shutdown.sh"
+    "cleanshutdown"
     "autoupdate.sh"
     "check-if-already-updating.sh"
     "remove-old-kernels.sh"

@@ -3,8 +3,12 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 # Determine the directory containing this script so sibling helpers are invoked
-# correctly even when cleanshutdown is run from another location.
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# correctly even when cleanshutdown is run from another location or a symlink.
+SCRIPT_PATH="$0"
+if command -v readlink >/dev/null 2>&1; then
+  SCRIPT_PATH="$(readlink -f "$0" || printf '%s' "$0")"
+fi
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
 if [[ $EUID -ne 0 && "${CLEANSHUTDOWN_ALLOW_NONROOT:-0}" != "1" ]]; then
   echo "cleanshutdown must run as root" >&2
