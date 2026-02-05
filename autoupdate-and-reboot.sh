@@ -18,18 +18,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/autoupdate.sh"
 
 force_reboot=0
-
-# If any argument is provided, treat it as a request to force a reboot flag
-if [[ $# -gt 0 ]]; then
-  force_reboot=1
-  mkdir -p "$(dirname "$REBOOT_REQUIRED_FILE")"
-  touch "$REBOOT_REQUIRED_FILE"
-fi
-
-if [[ "${REBOOT_FORCE:-0}" == "1" ]]; then
-  force_reboot=1
-fi
-
 mkdir -p "$(dirname "$LOGFILE")" "$(dirname "$LOCKFILE")"
 touch "$LOGFILE"
 exec 3>>"$LOGFILE"
@@ -43,6 +31,23 @@ log() {
     logger -t autoupdate "$message" || true
   fi
 }
+
+force_reboot_requested=0
+for arg in "$@"; do
+  case "$arg" in
+    force|--force|-f|reboot|--reboot)
+      force_reboot_requested=1
+      ;;
+  esac
+done
+
+if [[ "${REBOOT_FORCE:-0}" == "1" || "$force_reboot_requested" == "1" ]]; then
+  force_reboot=1
+fi
+
+if [[ "$force_reboot_requested" == "1" && "${REBOOT_FORCE:-0}" != "1" ]]; then
+  log "force argument detected; enabling forced reboot"
+fi
 
 exec 9>"$LOCKFILE"
 if ! flock -n 9; then

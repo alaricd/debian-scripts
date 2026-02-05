@@ -34,12 +34,17 @@ if [[ -z "$running_pkg" || -z "$running_version" ]]; then
   exit 0
 fi
 
-mapfile -t installed_kernels < <(dpkg-query -W -f='${Package} ${Version}\n' 'linux-image-*' 'linux-image-unsigned-*' 2>/dev/null || true)
+mapfile -t installed_kernels < <(
+  dpkg-query -W -f='${Package}\t${Version}\t${Status}\n' 'linux-image-*' 'linux-image-unsigned-*' 2>/dev/null || true
+)
 
 to_purge=()
 for entry in "${installed_kernels[@]}"; do
-  pkg_name="${entry%% *}"
-  pkg_version="${entry#* }"
+  IFS=$'\t' read -r pkg_name pkg_version pkg_status <<< "$entry"
+
+  if [[ "$pkg_status" != "install ok installed" ]]; then
+    continue
+  fi
 
   # Skip meta-packages that do not track a specific kernel ABI.
   if [[ ! "$pkg_name" =~ ^linux-image(-unsigned)?-[0-9] ]]; then

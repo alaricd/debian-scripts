@@ -35,7 +35,7 @@ fi
 case "${2:-}" in
   "-f=\${Status}\\n")
     case "$scenario" in
-      remove_one|keep_newer)
+      remove_one|keep_newer|skip_not_installed)
         if [[ "${3:-}" == "linux-image-6.1.0-18-amd64" ]]; then
           printf 'install ok installed\n'
           exit 0
@@ -52,7 +52,7 @@ case "${2:-}" in
     ;;
   "-f=\${Version}")
     case "$scenario" in
-      remove_one|keep_newer)
+      remove_one|keep_newer|skip_not_installed)
         if [[ "${3:-}" == "linux-image-6.1.0-18-amd64" ]]; then
           printf '6.1.76-1\n'
           exit 0
@@ -67,21 +67,26 @@ case "${2:-}" in
     esac
     exit 1
     ;;
-  "-f=\${Package} \${Version}\\n")
+  "-f=\${Package}\\t\${Version}\\t\${Status}\\n")
     case "$scenario" in
       remove_one)
-        printf 'linux-image-6.1.0-17-amd64 6.1.52-1\n'
-        printf 'linux-image-6.1.0-18-amd64 6.1.76-1\n'
-        printf 'linux-image-6.1.0-19-amd64 6.1.85-1\n'
+        printf 'linux-image-6.1.0-17-amd64\t6.1.52-1\tinstall ok installed\n'
+        printf 'linux-image-6.1.0-18-amd64\t6.1.76-1\tinstall ok installed\n'
+        printf 'linux-image-6.1.0-19-amd64\t6.1.85-1\tinstall ok installed\n'
         ;;
       keep_newer)
-        printf 'linux-image-6.1.0-18-amd64 6.1.76-1\n'
-        printf 'linux-image-6.1.0-19-amd64 6.1.85-1\n'
+        printf 'linux-image-6.1.0-18-amd64\t6.1.76-1\tinstall ok installed\n'
+        printf 'linux-image-6.1.0-19-amd64\t6.1.85-1\tinstall ok installed\n'
         ;;
       unsigned_current)
-        printf 'linux-image-unsigned-6.1.0-17-generic 6.1.52-1\n'
-        printf 'linux-image-unsigned-6.1.0-18-generic 6.1.76-1\n'
-        printf 'linux-image-unsigned-6.1.0-19-generic 6.1.85-1\n'
+        printf 'linux-image-unsigned-6.1.0-17-generic\t6.1.52-1\tinstall ok installed\n'
+        printf 'linux-image-unsigned-6.1.0-18-generic\t6.1.76-1\tinstall ok installed\n'
+        printf 'linux-image-unsigned-6.1.0-19-generic\t6.1.85-1\tinstall ok installed\n'
+        ;;
+      skip_not_installed)
+        printf 'linux-image-6.1.0-17-amd64\t6.1.52-1\tunknown ok not-installed\n'
+        printf 'linux-image-6.1.0-18-amd64\t6.1.76-1\tinstall ok installed\n'
+        printf 'linux-image-6.1.0-19-amd64\t6.1.85-1\tinstall ok installed\n'
         ;;
     esac
     exit 0
@@ -133,4 +138,10 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"purge -y linux-image-unsigned-6.1.0-17-generic"* ]]
   [[ "$output" != *"linux-image-unsigned-6.1.0-18-generic"* ]]
+}
+
+@test "ignores not-installed kernels" {
+  run env AUTOTEST_SCENARIO=skip_not_installed ./remove-old-kernels.sh
+  [ "$status" -eq 0 ]
+  [ ! -f "$AUTOTEST_STATE_DIR/apt-get.log" ]
 }

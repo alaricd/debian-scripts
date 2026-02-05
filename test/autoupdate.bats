@@ -170,16 +170,22 @@ teardown() {
   [ ! -f "$AUTOTEST_STATE_DIR/reboot.log" ]
 }
 
-@test "forces reboot even when NO_REBOOT is set" {
-  run env NO_REBOOT=1 REBOOT_FORCE=1 ./autoupdate-and-reboot.sh
+@test "forces reboot when arguments provided" {
+  run env REBOOT_REQUIRED_FILE="$AUTOTEST_STATE_DIR/reboot-required" ./autoupdate-and-reboot.sh force
   [ "$status" -eq 0 ]
   [ -f "$AUTOTEST_STATE_DIR/reboot.log" ]
 }
 
-@test "forces reboot when argument is provided" {
-  run env NO_REBOOT=1 REBOOT_REQUIRED_FILE="$AUTOTEST_STATE_DIR/reboot-required" ./autoupdate-and-reboot.sh true
+@test "forces reboot even when NO_REBOOT is set" {
+  run env NO_REBOOT=1 REBOOT_FORCE=1 REBOOT_REQUIRED_FILE="$AUTOTEST_STATE_DIR/reboot-required" ./autoupdate-and-reboot.sh
   [ "$status" -eq 0 ]
   [ -f "$AUTOTEST_STATE_DIR/reboot.log" ]
+}
+
+@test "does not force reboot for non-force arguments" {
+  run env NO_REBOOT=1 REBOOT_REQUIRED_FILE="$AUTOTEST_STATE_DIR/reboot-required" ./autoupdate-and-reboot.sh true
+  [ "$status" -eq 0 ]
+  [ ! -f "$AUTOTEST_STATE_DIR/reboot.log" ]
 }
 
 @test "needrestart failures trigger a reboot" {
